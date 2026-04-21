@@ -383,5 +383,6 @@ export class ChecklistProcessor extends Construct {
     aggregateResultTask.addCatch(handleErrorTask, {
       resultPath: "$.error",
     });
+    console.log("[COMPLETED] ChecklistProcessor Creation");
   }
 }

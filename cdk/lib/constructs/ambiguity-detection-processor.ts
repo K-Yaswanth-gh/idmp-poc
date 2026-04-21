@@ -98,5 +98,6 @@ export class AmbiguityDetectionProcessor extends Construct {
         resources: ["*"],
       })
     );
+    console.log("[COMPLETED] AmbiguityDetectionProcessor Creation");
   }
 }

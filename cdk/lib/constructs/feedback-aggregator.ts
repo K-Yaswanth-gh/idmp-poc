@@ -79,5 +79,6 @@ export class FeedbackAggregator extends Construct {
       target: new schedulerTargets.LambdaInvoke(this.lambda, {}),
       description: "Daily feedback summary aggregation",
     });
+    console.log("[COMPLETED] FeedbackAggregator Creation")
   }
 }

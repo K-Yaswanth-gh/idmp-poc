@@ -150,5 +150,6 @@ export class PrismaMigration extends Construct {
       } output.json`,
       description: "マイグレーションをリセットするコマンド (reset)",
     });
+    console.log("[COMPLETED] PrismaMigration Creation");
   }
 }

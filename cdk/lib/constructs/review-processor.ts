@@ -342,5 +342,6 @@ export class ReviewProcessor extends Construct {
         includeExecutionData: true,
       },
     });
+    console.log("[COMPLETED] ReviewProcessor Creation");
   }
 }

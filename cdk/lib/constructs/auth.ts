@@ -67,6 +67,7 @@ export class Auth extends Construct {
 
     // 出力の設定
     this.createOutputs(importUserPoolId, importUserPoolClientId);
+    console.log("[COMPLETED] ReviewProcessor Creation");
   }
 
   /**
