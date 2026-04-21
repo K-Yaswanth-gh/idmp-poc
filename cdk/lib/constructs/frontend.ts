@@ -170,7 +170,9 @@ export class Frontend extends Construct {
         description: "ARN of the ACM certificate",
       });
     }
+    console.log("[COMPLETED] Frontend Creation");
   }
+
 
   /**
    * Extracts the parent domain from a full domain name

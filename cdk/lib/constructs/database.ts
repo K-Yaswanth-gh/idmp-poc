@@ -123,6 +123,7 @@ export class Database extends Construct {
       ],
       true
     );
+    console.log("[COMPLETED] Database Creation");
   }
 
   /**

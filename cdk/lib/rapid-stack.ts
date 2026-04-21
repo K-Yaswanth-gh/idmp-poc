@@ -44,7 +44,6 @@ export class RapidStack extends cdk.Stack {
       objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
       autoDeleteObjects: true,
     });
-    console.log("Succeaafully Created AccessLog Bucket....");
 
     // S3バケットの作成
     const documentBucket = new s3.Bucket(this, "DocumentBucket", {
@@ -57,7 +56,6 @@ export class RapidStack extends cdk.Stack {
       serverAccessLogsBucket: accessLogBucket,
       serverAccessLogsPrefix: "DocumentBucket",
     });
-    console.log("Successfully Created Document Bucket....");
 
     // VPCの作成
     const vpc = ec2.Vpc.fromLookup(this, "vpc-use1-commprop-dev", {
@@ -80,17 +78,14 @@ export class RapidStack extends cdk.Stack {
       autoPause: true,
       autoPauseSeconds: 300,
     });
-    console.log("Successfully Created Database....");
 
     // Prisma マイグレーション Lambda の作成
-    
     const prismaMigration = new PrismaMigration(this, "PrismaMigration", {
       vpc,
       databaseConnection: database.connection,
       databaseCluster: database.cluster,
       autoMigrate: props.parameters.autoMigrate, // パラメータから自動マイグレーション設定を渡す
     });
-    console.log("Successfully Created Prisma migration Lambda...");
 
     // データベース接続権限の付与
     database.grantConnect(prismaMigration.securityGroup);
@@ -100,7 +95,6 @@ export class RapidStack extends cdk.Stack {
     const s3TempStorage = new S3TempStorage(this, "S3TempStorage", {
       accessLogBucket,
     });
-    console.log("Successfully Created Temporary S3 storage...");
 
     // ドキュメント処理ワークフローの作成
     const documentProcessor = new ChecklistProcessor(
@@ -119,7 +113,6 @@ export class RapidStack extends cdk.Stack {
         bedrockRegion: props.parameters.bedrockRegion,
       },
     );
-    console.log("Successfully Created Document Checklist Step-Functions...");
 
     // 審査ワークフローの作成
     const reviewProcessor = new ReviewProcessor(this, "ReviewProcessor", {
@@ -136,7 +129,6 @@ export class RapidStack extends cdk.Stack {
       enableCodeInterpreter: props.parameters.enableCodeInterpreter,
       availableModels: props.parameters.availableModels,
     });
-    console.log("Successfully Created Review Document Step-Functions...");
 
     // Auth構成の作成（Cognitoのカスタムパラメータを個別に渡す）
     const auth = new Auth(this, "Auth", {
@@ -145,7 +137,6 @@ export class RapidStack extends cdk.Stack {
       cognitoDomainPrefix: props.parameters.cognitoDomainPrefix,
       cognitoSelfSignUpEnabled: props.parameters.cognitoSelfSignUpEnabled,
     });
-    console.log("Successfully Created Authentication using Cognito...");
 
     const reviewQueueProcessor = new ReviewQueueProcessor(
       this,
@@ -165,7 +156,6 @@ export class RapidStack extends cdk.Stack {
         },
       },
     );
-    console.log("Successfully Created Review Queue Processor...");
 
     // Ambiguity Detection Processor
     const ambiguityProcessor = new AmbiguityDetectionProcessor(
@@ -177,7 +167,6 @@ export class RapidStack extends cdk.Stack {
         bedrockRegion: props.parameters.bedrockRegion,
       },
     );
-    console.log("Successfully Created Ambiguity Detection Process...");
 
     // Feedback Aggregator (daily batch job for feedback summary generation)
     const feedbackAggregator = new FeedbackAggregator(
@@ -192,7 +181,6 @@ export class RapidStack extends cdk.Stack {
           props.parameters.feedbackAggregatorScheduleExpression,
       },
     );
-    console.log("Successfully Created Feedback Aggregator Lambda...");
 
     // Grant database access to feedback aggregator
     database.grantConnect(feedbackAggregator.securityGroup);
@@ -219,7 +207,6 @@ export class RapidStack extends cdk.Stack {
       },
       auth: auth, // Authインスタンスを渡す
     });
-    console.log("Successfully Created API Gateway + Backend Lambdas...");
 
     // データベース接続権限の付与
     database.grantConnect(api.securityGroup);

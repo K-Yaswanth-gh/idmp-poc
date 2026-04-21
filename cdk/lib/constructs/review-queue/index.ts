@@ -114,5 +114,6 @@ export class ReviewQueueProcessor extends Construct {
           "FIFO queue with content-based deduplication; retry handling uses batch item failures.",
       },
     ]);
+    console.log("[COMPLETED] ReviewQueueProcessor Creation");
   }
 }

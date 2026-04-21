@@ -246,5 +246,6 @@ export class Api extends Construct {
       ],
       true,
     );
+    console.log("[COMPLETED Api Creation]");
   }
 }
