@@ -12,7 +12,7 @@ import { DatabaseConnectionProps } from "./database";
 import { DockerPrismaFunction } from "./docker-prisma-function";
 
 export interface AmbiguityDetectionProcessorProps {
-  vpc: ec2.Vpc;
+  vpc: ec2.IVpc;
   databaseConnection: DatabaseConnectionProps;
   bedrockRegion: string;
 }
