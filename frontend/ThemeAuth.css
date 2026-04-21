@@ -1,0 +1,206 @@
+/* TailwindThemeAuth.css */
+/* Simple isolated styling with direct color codes */
+
+/* Container layout */
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  background-color: #f3f4f6;
+  text-align: center;
+}
+
+/* Header styling */
+.auth-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 1rem;
+  object-fit: contain;
+}
+
+.auth-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #232f3e; /* aws-squid-ink-light */
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.auth-description {
+  font-size: 0.875rem;
+  color: #909193; /* aws-font-color-gray */
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Auth wrapper */
+.auth-wrapper {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Authenticator styling */
+.auth-wrapper .amplify-authenticator {
+  width: 100% !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 8px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Center the input fields and form elements */
+.auth-wrapper .amplify-field {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100% !important;
+  text-align: left !important;
+}
+
+/* Reset all button styles */
+.auth-wrapper button,
+.auth-wrapper .amplify-button {
+  font-weight: 500 !important;
+  border-radius: 0.375rem !important;
+  padding: 0.5rem 1rem !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+/* Target ONLY the Sign In button - use super specific selectors */
+.auth-wrapper button.amplify-button[data-variation="primary"],
+.auth-wrapper .amplify-button[type="submit"] {
+  background-color: #005276 !important; /* aws-sea-blue-light */
+  border-color: #005276 !important;
+  color: #ffffff !important;
+}
+
+/* Direct targeting of Sign In button with multiple selectors to ensure it's caught */
+.auth-wrapper form > button.amplify-button,
+.auth-wrapper button.amplify-button[type="submit"],
+.auth-wrapper form > .amplify-button[type="submit"] {
+  background-color: #005276 !important; /* aws-sea-blue-light */
+  border-color: #005276 !important;
+  color: #ffffff !important;
+}
+
+/* Forgot Password button */
+.auth-wrapper a.amplify-button,
+.auth-wrapper
+  button.amplify-button:not([type="submit"]):not([data-variation="primary"]) {
+  background-color: transparent !important;
+  border: 1px solid #005276 !important; /* aws-sea-blue-light */
+  color: #005276 !important;
+}
+
+/* Hover styles - Sign In */
+.auth-wrapper button.amplify-button[data-variation="primary"]:hover,
+.auth-wrapper .amplify-button[type="submit"]:hover,
+.auth-wrapper form > button.amplify-button:hover {
+  background-color: #003550 !important; /* aws-sea-blue-hover-light */
+  border-color: #003550 !important;
+}
+
+/* Hover styles - Forgot Password */
+.auth-wrapper a.amplify-button:hover,
+.auth-wrapper
+  button.amplify-button:not([type="submit"]):not(
+    [data-variation="primary"]
+  ):hover {
+  background-color: #f1f3f3 !important; /* aws-paper-light */
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  .auth-wrapper button.amplify-button[data-variation="primary"],
+  .auth-wrapper .amplify-button[type="submit"],
+  .auth-wrapper form > button.amplify-button {
+    background-color: #757575 !important; /* aws-sea-blue-dark */
+    border-color: #757575 !important;
+  }
+
+  .auth-wrapper button.amplify-button[data-variation="primary"]:hover,
+  .auth-wrapper .amplify-button[type="submit"]:hover,
+  .auth-wrapper form > button.amplify-button:hover {
+    background-color: #5b5b5b !important; /* aws-sea-blue-hover-dark */
+    border-color: #5b5b5b !important;
+  }
+}
+
+/* Other UI components */
+.auth-wrapper .amplify-tabs {
+  border-color: #e5e7eb !important; /* light-gray */
+}
+
+.auth-wrapper .amplify-tabs-item {
+  color: #232f3e !important; /* aws-font-color-light */
+  border-color: transparent !important;
+}
+
+.auth-wrapper .amplify-tabs-item[data-state="active"] {
+  border-color: #007faa !important; /* aws-aqua */
+  color: #007faa !important;
+}
+
+.auth-wrapper .amplify-field__show-password {
+  background-color: transparent !important;
+  border-color: #e5e7eb !important; /* light-gray */
+}
+
+.auth-wrapper .amplify-field-group input {
+  border-color: #e5e7eb !important; /* light-gray */
+  color: #232f3e !important; /* aws-font-color-light */
+  background-color: #ffffff !important;
+}
+
+/* Universal style reset */
+.auth-wrapper * {
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif !important;
+}
+
+/* Force the specific color for the "Sign in" button by targeting it more specifically */
+.auth-wrapper button[type="submit"].amplify-button,
+.auth-wrapper form[data-amplify-authenticator-signin] button[type="submit"],
+.auth-wrapper form[data-amplify-form] button[type="submit"],
+.auth-wrapper form button[type="submit"]:last-of-type {
+  background-color: #005276 !important; /* aws-sea-blue-light */
+  border-color: #005276 !important;
+  color: #ffffff !important;
+}
+
+/* Force the outline style for "Forgot your password?" */
+.auth-wrapper a.amplify-button,
+.auth-wrapper a[data-amplify-router-link] {
+  background-color: transparent !important;
+  border: 1px solid #005276 !important; /* aws-sea-blue-light */
+  color: #005276 !important;
+}
