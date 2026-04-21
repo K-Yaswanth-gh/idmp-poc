@@ -72,7 +72,6 @@ export class RapidStack extends cdk.Stack {
     // データベースの作成
     const database = new Database(this, "Database", {
       vpc,
-	  vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       databaseName: "rapid",
       minCapacity: 0.5,
       maxCapacity: 1,
@@ -83,7 +82,6 @@ export class RapidStack extends cdk.Stack {
     // Prisma マイグレーション Lambda の作成
     const prismaMigration = new PrismaMigration(this, "PrismaMigration", {
       vpc,
-	  vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       databaseConnection: database.connection,
       databaseCluster: database.cluster,
       autoMigrate: props.parameters.autoMigrate, // パラメータから自動マイグレーション設定を渡す
@@ -105,7 +103,6 @@ export class RapidStack extends cdk.Stack {
       {
         documentBucket,
         vpc,
-		vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
         mediumDocThreshold: 40,
         largeDocThreshold: 100,
         inlineMapConcurrency:
@@ -122,7 +119,6 @@ export class RapidStack extends cdk.Stack {
       documentBucket,
       tempBucket: s3TempStorage.bucket,
       vpc,
-	  vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       logLevel: sfn.LogLevel.ALL,
       maxConcurrency: props.parameters.reviewMapConcurrency || 1,
       databaseConnection: database.connection,
@@ -167,7 +163,6 @@ export class RapidStack extends cdk.Stack {
       "AmbiguityProcessor",
       {
         vpc,
-		vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
         databaseConnection: database.connection,
         bedrockRegion: props.parameters.bedrockRegion,
       },
@@ -179,7 +174,6 @@ export class RapidStack extends cdk.Stack {
       "FeedbackAggregator",
       {
         vpc,
-		vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
         databaseConnection: database.connection,
         bedrockRegion: props.parameters.bedrockRegion,
         aggregationDays: 7,
