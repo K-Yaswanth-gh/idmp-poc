@@ -58,9 +58,8 @@ export class RapidStack extends cdk.Stack {
     });
 
     // VPCの作成
-    const vpc = new ec2.Vpc(this, "RapidVpc", {
-      maxAzs: 2,
-      natGateways: 1,
+    const vpc = ec2.Vpc.fromLookup(this, "vpc-use1-commprop-dev", {
+      vpcId: "vpc-03c506847c4f490ad",
       subnetConfiguration: [
         {
           name: "public",
