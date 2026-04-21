@@ -36,6 +36,7 @@ export class RapidStack extends cdk.Stack {
 
     const prefix = cdk.Stack.of(this).region;
 
+    console.log("Creating AccessLog Bucket....");
     const accessLogBucket = new s3.Bucket(this, `${prefix}AccessLogBucket`, {
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -44,8 +45,10 @@ export class RapidStack extends cdk.Stack {
       objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
       autoDeleteObjects: true,
     });
+    console.log("Succeaafully Created AccessLog Bucket....");
 
     // S3バケットの作成
+    console.log("Creating Document Bucket....");
     const documentBucket = new s3.Bucket(this, "DocumentBucket", {
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -56,6 +59,7 @@ export class RapidStack extends cdk.Stack {
       serverAccessLogsBucket: accessLogBucket,
       serverAccessLogsPrefix: "DocumentBucket",
     });
+    console.log("Successfully Created Document Bucket....");
 
     // VPCの作成
     const vpc = ec2.Vpc.fromLookup(this, "vpc-use1-commprop-dev", {
@@ -70,6 +74,7 @@ export class RapidStack extends cdk.Stack {
     });
 
     // データベースの作成
+    console.log("Creating Database....");
     const database = new Database(this, "Database", {
       vpc,
       databaseName: "rapid",
@@ -78,6 +83,7 @@ export class RapidStack extends cdk.Stack {
       autoPause: true,
       autoPauseSeconds: 300,
     });
+    console.log("Successfully Created Database....");
 
     // Prisma マイグレーション Lambda の作成
     const prismaMigration = new PrismaMigration(this, "PrismaMigration", {
