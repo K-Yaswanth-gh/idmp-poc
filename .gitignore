@@ -1,0 +1,11 @@
+tasks
+.DS_Store
+node_modules
+dist
+.vscode
+.env
+gitlab.md
+memory-bank/
+.serena
+.venv
+.playwright-mcp/
