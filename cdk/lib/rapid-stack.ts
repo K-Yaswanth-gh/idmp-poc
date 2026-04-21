@@ -189,7 +189,6 @@ export class RapidStack extends cdk.Stack {
     // API Gatewayとそれに紐づくLambda関数の作成
     const api = new Api(this, "Api", {
       vpc,
-	  vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       databaseConnection: database.connection,
       environment: {
         DOCUMENT_BUCKET: documentBucket.bucketName,
