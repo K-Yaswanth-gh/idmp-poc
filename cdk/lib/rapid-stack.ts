@@ -58,8 +58,8 @@ export class RapidStack extends cdk.Stack {
     });
 
     // VPCの作成
-    const vpc = ec2.Vpc.fromLookup(this, "vpc-use1-commprop-dev", {
-      vpcId: "vpc-03c506847c4f490ad",
+    const vpc = ec2.Vpc.fromLookup(this, "vpc-use1-uw-dms-test", {
+      vpcId: "vpc-09c3d5eaacdf3a0dd",
     });
 
     // Add VPC Flow Logs (AwsSolutions-VPC7)
