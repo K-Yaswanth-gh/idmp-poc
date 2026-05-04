@@ -9,6 +9,7 @@ import {
 } from "../lib/parameter-schema";
 import { AwsSolutionsChecks } from "cdk-nag";
 import { applyNagSuppressions } from "../lib/nag-suppressions";
+import { PermissionsBoundaryAspect } from '../lib/aspects/permissions-boundary-aspect';
 
 const app = new cdk.App();
 
@@ -24,6 +25,16 @@ const app = new cdk.App();
  */
 const account = process.env.CDK_DEFAULT_ACCOUNT;
 const region = process.env.CDK_DEFAULT_REGION;
+
+
+const PERMISSIONS_BOUNDARY_ARN =
+  `arn:aws:iam::${account}:policy/VA-PB-Standard`;
+
+
+cdk.Aspects.of(app).add(
+  new PermissionsBoundaryAspect(PERMISSIONS_BOUNDARY_ARN),
+);
+``
 
 const uwdmstestSynthesizer = new cdk.DefaultStackSynthesizer({
   qualifier: "uwdmstest",
