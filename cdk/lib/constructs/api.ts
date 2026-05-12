@@ -160,7 +160,7 @@ export class Api extends Construct {
     this.api = new apigateway.RestApi(this, "RapidApi", {
       restApiName: `${stackId}-RAPID-API`,
       description:
-        "RAPID (Review & Assessment Powered by Intelligent Documentation) API",
+        "IDMP (Intelligent Data Mapping Platform) API",
       deployOptions: {
         stageName: "api",
         tracingEnabled: true,

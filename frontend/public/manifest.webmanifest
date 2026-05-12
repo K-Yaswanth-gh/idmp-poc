@@ -1,7 +1,7 @@
 {
-  "name": "RAPID",
-  "short_name": "RAPID",
-  "description": "Review & Assessment Powered by Intelligent Documentation",
+  "name": "IDMP",
+  "short_name": "IDMP",
+  "description": "Intelligent Data Mapping Platform",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
