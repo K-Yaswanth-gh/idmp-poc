@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Review & Assessment Powered by Intelligent Documentation",
+    "appName": "Intelligent Data Mapping Platform",
     "loading": "Loading...",
     "error": "An error occurred",
     "retry": "Retry",
@@ -62,7 +62,7 @@
   "auth": {
     "signIn": "Sign In",
     "signUp": "Create Account",
-    "appDescription": "Review & Assessment Powered by Intelligent Documentation",
+    "appDescription": "Intelligent Data Mapping Platform",
     "username": "Username",
     "password": "Password",
     "confirmPassword": "Confirm Password",
