@@ -15,6 +15,11 @@ export class DockerPrismaFunction extends lambda.DockerImageFunction {
       props.role ||
       new iam.Role(scope, "HandlerRole", {
         assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+          scope,
+          "PrismaHandlerRolePermissionsBoundary",
+          "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+        ),
       });
     // Add VPC access to the Lambda function
     handlerRole.addManagedPolicy(

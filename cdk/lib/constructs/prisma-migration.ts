@@ -76,6 +76,11 @@ export class PrismaMigration extends Construct {
       // Lambda関数を呼び出すためのロールを作成
       const role = new iam.Role(this, "MigrationInvokerRole", {
         assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+          scope,
+          "MigrationInvokerRolePermissionsBoundary",
+          "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+        ),
       });
 
       // マイグレーションLambdaを呼び出す権限を追加

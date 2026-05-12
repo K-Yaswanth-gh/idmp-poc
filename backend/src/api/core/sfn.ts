@@ -14,7 +14,7 @@ let sfnClient: SFNClient | null = null;
 export function getSfnClient(): SFNClient {
   if (!sfnClient) {
     sfnClient = new SFNClient({
-      region: process.env.AWS_REGION || "ap-northeast-1",
+      region: process.env.AWS_REGION || "us-east-1",
     });
   }
   return sfnClient;

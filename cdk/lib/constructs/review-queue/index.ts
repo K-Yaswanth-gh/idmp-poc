@@ -6,6 +6,7 @@ import * as sqs from "aws-cdk-lib/aws-sqs";
 import { NagSuppressions } from "cdk-nag/lib/nag-suppressions";
 import { Construct } from "constructs";
 import * as path from "path";
+import * as logs from "aws-cdk-lib/aws-logs";
 
 export interface ReviewQueueProcessorProps {
   /**
@@ -52,8 +53,24 @@ export class ReviewQueueProcessor extends Construct {
         maxReceiveCount: 5,
       },
     });
+    
+	  const lambdaRole = new iam.Role(this, "ReviewQueueLambdaRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+        scope,
+        "ReviewQueueLambdaRolePermissionsBoundary",
+        "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+      ),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole",
+        ),
+      ],
+    });
+
 
     this.lambdaFunction = new lambda.Function(this, "PythonFunction", {
+      role: lambdaRole,
       runtime: lambda.Runtime.PYTHON_3_14,
       handler: "handler.lambda_handler",
       code: lambda.Code.fromAsset(path.join(__dirname, "consumer")),
@@ -64,12 +81,15 @@ export class ReviewQueueProcessor extends Construct {
         ...props.environment,
       },
       reservedConcurrentExecutions: 1,
-      logRetention:
-        props.lambdaLogRetentionDays !== undefined
-          ? props.lambdaLogRetentionDays
-          : cdk.aws_logs.RetentionDays.THREE_YEARS,
-      retryAttempts: 0,
     });
+
+    new logs.LogGroup(this, "ReviewQueueLogGroup", {
+      logGroupName: `/aws/lambda/${this.lambdaFunction.functionName}`,
+      retention:
+      props.lambdaLogRetentionDays ??
+      logs.RetentionDays.THREE_YEARS,
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // recommended for prod
+});
 
     const eventSource = new lambdaEventSources.SqsEventSource(this.queue, {
       batchSize: 1,
@@ -78,7 +98,7 @@ export class ReviewQueueProcessor extends Construct {
 
     this.lambdaFunction.addEventSource(eventSource);
 
-    this.lambdaFunction.addToRolePolicy(
+    lambdaRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["lambda:InvokeFunction"],
@@ -86,7 +106,7 @@ export class ReviewQueueProcessor extends Construct {
       }),
     );
 
-    this.lambdaFunction.addToRolePolicy(
+    lambdaRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["states:ListExecutions", "states:StartExecution"],
@@ -94,8 +114,8 @@ export class ReviewQueueProcessor extends Construct {
       }),
     );
 
-    this.queue.grantConsumeMessages(this.lambdaFunction);
-    this.queue.grantSendMessages(this.lambdaFunction);
+    this.queue.grantConsumeMessages(lambdaRole);
+    this.queue.grantSendMessages(lambdaRole);
 
     new cdk.CfnOutput(this, "LambdaFunctionName", {
       value: this.lambdaFunction.functionName,

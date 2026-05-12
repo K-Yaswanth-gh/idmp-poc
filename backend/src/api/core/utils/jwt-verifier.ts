@@ -8,7 +8,7 @@ export class JwtVerifier {
 
   constructor() {
     // 環境変数から設定を取得
-    const region = process.env.AWS_REGION || "ap-northeast-1";
+    const region = process.env.AWS_REGION || "us-east-1";
     const userPoolId = process.env.COGNITO_USER_POOL_ID;
     const clientId = process.env.COGNITO_CLIENT_ID;
 

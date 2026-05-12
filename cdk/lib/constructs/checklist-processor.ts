@@ -143,6 +143,26 @@ export class ChecklistProcessor extends Construct {
       }
     );
 
+    this.documentLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+        ],
+        resources: ["*"],
+      })
+    );
+    
+    this.documentLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "aws-marketplace:ViewSubscriptions",
+          "aws-marketplace:Subscribe",
+        ],
+        resources: ["*"],
+      })
+    );
+
     // Lambda関数にS3バケットへのアクセス権限を付与
     props.documentBucket.grantReadWrite(this.documentLambda);
 
@@ -331,6 +351,11 @@ export class ChecklistProcessor extends Construct {
     // IAMロールの作成
     const stateMachineRole = new iam.Role(this, "StateMachineRole", {
       assumedBy: new iam.ServicePrincipal("states.amazonaws.com"),
+      permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+        scope,
+        "StateMachineRole1PermissionsBoundary",
+        "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+      ),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
           "service-role/AWSLambdaRole"

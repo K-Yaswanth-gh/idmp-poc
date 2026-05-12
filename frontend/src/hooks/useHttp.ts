@@ -2,7 +2,7 @@ import useSWR, { SWRConfiguration, Fetcher } from "swr";
 import { useAuth } from "../contexts/AuthContext";
 
 const API_BASE =
-  import.meta.env.VITE_APP_API_ENDPOINT || "http://localhost:3000";
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_APP_API_ENDPOINT || "http://localhost:3000";
 
 const API_ENDPOINT = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 

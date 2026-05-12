@@ -20,7 +20,7 @@ let s3Client: S3Client | null = null;
 export function getS3Client(): S3Client {
   if (!s3Client) {
     s3Client = new S3Client({
-      region: process.env.AWS_REGION || "ap-northeast-1",
+      region: process.env.AWS_REGION || "us-east-1",
     });
   }
   return s3Client;

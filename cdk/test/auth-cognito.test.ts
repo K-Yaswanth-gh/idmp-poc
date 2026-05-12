@@ -26,7 +26,7 @@ describe("Auth Cognito Tests", () => {
       // GIVEN
       const app = new cdk.App();
       const stack = new cdk.Stack(app, "TestStack");
-      const userPoolId = "ap-northeast-1_testUserPoolId";
+      const userPoolId = "us-east-1_testUserPoolId";
 
       // WHEN
       new Auth(stack, "TestAuth", {
@@ -52,7 +52,7 @@ describe("Auth Cognito Tests", () => {
       // GIVEN
       const app = new cdk.App();
       const stack = new cdk.Stack(app, "TestStack");
-      const userPoolId = "ap-northeast-1_testUserPoolId";
+      const userPoolId = "us-east-1_testUserPoolId";
       const userPoolClientId = "testUserPoolClientId";
 
       // WHEN
@@ -96,7 +96,7 @@ describe("Auth Cognito Tests", () => {
       // GIVEN
       const app = new cdk.App();
       const stack = new cdk.Stack(app, "TestStack");
-      const userPoolId = "ap-northeast-1_testUserPoolId";
+      const userPoolId = "us-east-1_testUserPoolId";
       const userPoolClientId = "testUserPoolClientId";
       const domainPrefix = "test-domain";
 

@@ -125,8 +125,27 @@ export class ReviewProcessor extends Construct {
       enableCodeInterpreter: props.enableCodeInterpreter,
     });
 
+    const invokeAgentLambdaRole = new iam.Role(
+      this,
+      "InvokeAgentFunctionRole",
+      {
+        assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        permissionsBoundary:
+        iam.ManagedPolicy.fromManagedPolicyArn(
+          this,
+          "InvokeAgentFunctionPermissionsBoundary",
+          "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+      ),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole"
+        ),
+      ],
+    });
+
     // Lambda function for invoking AgentCore
     const invokeAgentLambda = new lambda.Function(this, "InvokeAgentFunction", {
+      role: invokeAgentLambdaRole,
       runtime: lambda.Runtime.NODEJS_24_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset(path.join(__dirname, "lambda/invoke-agent"), {
@@ -306,6 +325,11 @@ export class ReviewProcessor extends Construct {
     // IAMロールの作成
     const stateMachineRole = new iam.Role(this, "StateMachineRole", {
       assumedBy: new iam.ServicePrincipal("states.amazonaws.com"),
+      permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+          scope,
+          "StateMachineRoleRolePermissionsBoundary",
+          "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+        ),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
           "service-role/AWSLambdaRole",

@@ -10,6 +10,7 @@ import {
   PolicyStatement,
   Role,
   ServicePrincipal,
+  ManagedPolicy,
 } from "aws-cdk-lib/aws-iam";
 import { CfnMemory, CfnRuntime } from "aws-cdk-lib/aws-bedrockagentcore";
 
@@ -47,6 +48,11 @@ export class Agent extends Construct {
     });
     const role = new Role(this, "Role", {
       assumedBy: new ServicePrincipal("bedrock-agentcore.amazonaws.com"),
+      permissionsBoundary: ManagedPolicy.fromManagedPolicyArn(
+        scope,
+        "AgentsRolePermissionsBoundary",
+        "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+      ),
     });
     image.repository.grantPull(role);
 

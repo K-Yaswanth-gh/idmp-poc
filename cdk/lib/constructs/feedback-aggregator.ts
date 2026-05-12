@@ -38,8 +38,27 @@ export class FeedbackAggregator extends Construct {
       allowAllOutbound: true,
     });
 
+    const lambdaRole = new iam.Role(this, "FeedbackAggregatorLambdaRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+        scope,
+        "FeedbackAggregatorLambdaRolePermissionsBoundary",
+        "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+      ),
+    });
+
+    lambdaRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
+    );
+
+    lambdaRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaVPCAccessExecutionRole")
+    );
+
+
     // Lambda function
     this.lambda = new DockerPrismaFunction(this, "Function", {
+      role: lambdaRole,
       code: lambda.DockerImageCode.fromImageAsset(
         path.join(__dirname, "../../../backend/"),
         {
@@ -66,17 +85,30 @@ export class FeedbackAggregator extends Construct {
     });
 
     // Bedrock permissions
-    this.lambda.addToRolePolicy(
+    lambdaRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ["bedrock:InvokeModel"],
         resources: ["*"],
       })
     );
 
+    const schedulerRole = new iam.Role(this, "FeedbackAggregatorSchedulerRole", {
+      assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
+      permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+        scope,
+        "FeedbackAggregatorSchedulerRolePermissionsBoundary",
+        "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+      ),
+    });
+
+    this.lambda.grantInvoke(schedulerRole);
+
     // EventBridge Scheduler for scheduled execution
     new scheduler.Schedule(this, "FeedbackAggregatorSchedule", {
       schedule: scheduler.ScheduleExpression.expression(scheduleExpression),
-      target: new schedulerTargets.LambdaInvoke(this.lambda, {}),
+      target: new schedulerTargets.LambdaInvoke(this.lambda, {
+        role: schedulerRole,
+      }),
       description: "Daily feedback summary aggregation",
     });
     console.log("[COMPLETED] FeedbackAggregator Creation")
