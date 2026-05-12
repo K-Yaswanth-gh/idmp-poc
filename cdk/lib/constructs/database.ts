@@ -77,10 +77,25 @@ export class Database extends Construct {
     });
 
     // シークレットローテーションの設定
-    this.cluster.addRotationSingleUser();
+    // Rotation removed intentionally
+    //this.cluster.addRotationSingleUser();
+    
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      "/RapidStack/Database/Database/Secret/Resource",
+      [
+        {
+          id: "AwsSolutions-SMG4",
+          reason:
+          "Automatic secret rotation is temporarily disabled due to enterprise IAM permission boundary restrictions.",
+        },
+      ]
+    );
+
 
     // シークレットの参照を保存
     this.secret = this.cluster.secret!;
+
 
     // データベース接続情報を保存
     this.connection = {

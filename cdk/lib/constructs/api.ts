@@ -46,6 +46,11 @@ export class Api extends Construct {
     // Role
     const handlerRole = new iam.Role(scope, "HandlerRole", {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+        scope,
+        "HandlerRolePermissionsBoundary",
+        "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+      ),
     });
     // Add VPC access to the Lambda function
     handlerRole.addManagedPolicy(
@@ -133,6 +138,11 @@ export class Api extends Construct {
       "ApiGatewayCloudWatchRole",
       {
         assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+        permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+          scope,
+          "apiGatewayCloudWatchRolePermissionsBoundary",
+          "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+        ),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName(
             "service-role/AmazonAPIGatewayPushToCloudWatchLogs",
@@ -140,6 +150,11 @@ export class Api extends Construct {
         ],
       },
     );
+
+    new apigateway.CfnAccount(this, "ApiGatewayAccount", {
+      cloudWatchRoleArn: apiGatewayCloudWatchRole.roleArn,
+    });
+
 
     // API Gateway の作成 - スタック名を含めて一意性を確保
     this.api = new apigateway.RestApi(this, "RapidApi", {
@@ -183,7 +198,6 @@ export class Api extends Construct {
         ],
       },
       apiKeySourceType: apigateway.ApiKeySourceType.HEADER,
-      cloudWatchRole: true,
     });
 
     // Lambda 統合の設定

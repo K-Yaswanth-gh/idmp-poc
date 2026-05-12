@@ -32,7 +32,7 @@ export class S3TempStorage extends Construct {
       
       // 開発環境では自動削除を有効化
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      //autoDeleteObjects: true,
       
       // オブジェクト所有権設定
       objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,

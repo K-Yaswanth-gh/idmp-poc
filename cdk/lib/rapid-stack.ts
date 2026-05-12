@@ -2,7 +2,8 @@ import * as cdk from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as sfn from "aws-cdk-lib/aws-stepfunctions";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
-import * as path from "path";
+import * as logs from "aws-cdk-lib/aws-logs";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import { ChecklistProcessor } from "./constructs/checklist-processor";
 import { ReviewProcessor } from "./constructs/review-processor";
@@ -17,6 +18,7 @@ import { S3TempStorage } from "./constructs/s3-temp-storage";
 import { Parameters } from "./parameter-schema";
 import { execSync } from "child_process";
 import { ReviewQueueProcessor } from "./constructs/review-queue";
+import * as cognito from "aws-cdk-lib/aws-cognito";
 
 export interface RapidStackProps extends cdk.StackProps {
   readonly webAclId: string;
@@ -42,7 +44,7 @@ export class RapidStack extends cdk.Stack {
       enforceSSL: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
-      autoDeleteObjects: true,
+      //autoDeleteObjects: true,
     });
 
     // S3バケットの作成
@@ -52,7 +54,7 @@ export class RapidStack extends cdk.Stack {
       enforceSSL: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
-      autoDeleteObjects: true,
+      //autoDeleteObjects: true,
       serverAccessLogsBucket: accessLogBucket,
       serverAccessLogsPrefix: "DocumentBucket",
     });
@@ -62,12 +64,38 @@ export class RapidStack extends cdk.Stack {
       vpcId: "vpc-09c3d5eaacdf3a0dd",
     });
 
+    /*
+    const flowLogRole = new iam.Role(this, "VpcFlowLogRole", {
+      assumedBy: new iam.ServicePrincipal("vpc-flow-logs.amazonaws.com"),
+      permissionsBoundary: iam.ManagedPolicy.fromManagedPolicyArn(
+        this,
+        "VpcFlowLogRolePermissionBoundary",
+        "arn:aws:iam::553607017161:policy/VA-PB-Standard"
+      ),
+    });
+    
+    flowLogRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+        ],
+        resources: ["*"],
+      })
+    );
+    
+    const logGroup = new logs.LogGroup(this, "VpcFlowLogsGroup");
+
     // Add VPC Flow Logs (AwsSolutions-VPC7)
     new ec2.FlowLog(this, "VpcFlowLog", {
       resourceType: ec2.FlowLogResourceType.fromVpc(vpc),
-      destination: ec2.FlowLogDestination.toCloudWatchLogs(),
+      destination: ec2.FlowLogDestination.toCloudWatchLogs(logGroup, flowLogRole),
       trafficType: ec2.FlowLogTrafficType.ALL,
     });
+
+    */
 
     // データベースの作成
     const database = new Database(this, "Database", {
@@ -242,27 +270,38 @@ export class RapidStack extends cdk.Stack {
     // Gitの最新タグを取得
     const latestGitTag = this.getLatestGitTag();
 
+    /*
     frontend.buildViteApp({
       backendApiEndpoint: api.api.url,
       userPoolDomainPrefix: "",
       auth,
       version: latestGitTag, // Gitタグ情報を追加
     });
+    */
 
     documentBucket.addCorsRule({
       allowedMethods: [s3.HttpMethods.PUT],
       allowedOrigins: [
-        `https://${frontend.cloudFrontWebDistribution.distributionDomainName}`, // frontend.getOrigin() is cyclic reference
+        `https://${frontend.distribution.domainName}`,
         "http://localhost:5173",
       ],
       allowedHeaders: ["*"],
       maxAge: 3000,
     });
 
+    new cdk.CfnOutput(this, "FrontendBucketName", {
+      value: frontend.bucket.bucketName,
+    });
+    
+    new cdk.CfnOutput(this, "CloudFrontDistributionId", {
+      value: frontend.distribution.distributionId,
+    });
+
     // 出力
     new cdk.CfnOutput(this, "FrontendURL", {
-      value: frontend.getOrigin(),
+      value: `https://${frontend.distribution.domainName}`,
     });
+
     new cdk.CfnOutput(this, "DocumentBucketName", {
       value: documentBucket.bucketName,
     });
@@ -316,6 +355,20 @@ export class RapidStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, "ImageReviewModelId", {
       value: props.parameters.imageReviewModelId,
+    });
+
+    new cdk.CfnOutput(this, "UserPoolId", {
+      value:
+      auth.userPool instanceof cognito.UserPool
+      ? auth.userPool.userPoolId
+      : props.parameters.cognitoUserPoolId || "",
+    });
+    
+    new cdk.CfnOutput(this, "UserPoolClientId", {
+      value:
+      auth.client instanceof cognito.UserPoolClient
+      ? auth.client.userPoolClientId
+      : props.parameters.cognitoUserPoolClientId || "",
     });
 
     // Fix migrationLambda.functionArn

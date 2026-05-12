@@ -20,7 +20,7 @@ const parameterSchema = z.object({
 
   bedrockRegion: z
     .string()
-    .default("us-west-2")
+    .default("us-east-1")
     .describe("Amazon Bedrockを利用するリージョン"),
 
   // AI モデル設定

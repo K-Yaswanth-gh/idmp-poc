@@ -4,9 +4,9 @@ import { signIn, signOut, getCurrentUser, fetchUserAttributes, fetchAuthSession 
 
 // 環境変数から設定を取得
 // CDKのbuildViteAppで設定される環境変数名に合わせる
-const region = import.meta.env.VITE_APP_REGION || 'ap-northeast-1';
-const userPoolId = import.meta.env.VITE_APP_USER_POOL_ID;
-const userPoolWebClientId = import.meta.env.VITE_APP_USER_POOL_CLIENT_ID;
+const region = import.meta.env.VITE_AWS_REGION || 'us-east-1';
+const userPoolId = import.meta.env.VITE_USER_POOL_ID;
+const userPoolWebClientId = import.meta.env.VITE_USER_POOL_CLIENT_ID;
 
 // デバッグ用に環境変数の値をコンソールに出力
 console.log('Auth Configuration:', {
