@@ -1,107 +1,259 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: RAPIDアプリケーションをデプロイするためのCodeBuildプロジェクト
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Review & Assessment Powered by Intelligent Documentation (RAPID) one click deployment'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "RAPID Deployment Parameters"
+        Parameters:
+          - NotificationEmailAddress
+          - AllowedIpV4AddressRanges
+          - AllowedIpV6AddressRanges
+          - DisableIpv6
+          - AutoMigrate
+          - CognitoSelfSignUpEnabled
+          - CognitoUserPoolId
+          - CognitoUserPoolClientId
+          - CognitoDomainPrefix
+          - McpAdmin
+          - RepoUrl
+          - Branch
+          - GitTag
 
 Parameters:
+  NotificationEmailAddress:
+    Type: String
+    Description: 'Email address to receive deployment notifications (Example: test@example.co.jp)'
+    AllowedPattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    ConstraintDescription: Must be a valid email address
+
   AllowedIpV4AddressRanges:
     Type: String
     Default: '["0.0.0.0/1","128.0.0.0/1"]'
-    Description: フロントエンドWAFで許可するIPv4アドレス範囲（JSON配列形式）
+    Description: 'Allowed IPv4 address ranges for frontend WAF (JSON array format). Find your current Public IP address here: https://checkip.amazonaws.com/'
 
   AllowedIpV6AddressRanges:
     Type: String
     Default: '["0000:0000:0000:0000:0000:0000:0000:0000/1","8000:0000:0000:0000:0000:0000:0000:0000/1"]'
-    Description: フロントエンドWAFで許可するIPv6アドレス範囲（JSON配列形式）
+    Description: 'Allowed IPv6 address ranges for frontend WAF (JSON array format)'
 
   DisableIpv6:
     Type: String
     Default: "false"
-    Description: IPv6サポートを無効にするかどうか
     AllowedValues: ["true", "false"]
+    Description: 'Whether to disable IPv6 support'
 
   AutoMigrate:
     Type: String
     Default: "true"
-    Description: デプロイ時に自動的にデータベースマイグレーションを実行するかどうか
     AllowedValues: ["true", "false"]
+    Description: 'Whether to automatically run database migration during deployment'
 
   CognitoSelfSignUpEnabled:
     Type: String
     Default: "true"
-    Description: Cognito User Poolのセルフサインアップを有効にするかどうか
     AllowedValues: ["true", "false"]
+    Description: 'Enable self-signup functionality for Cognito User Pool (CAUTION: Carefully consider when you allow public access)'
 
   CognitoUserPoolId:
     Type: String
     Default: ""
-    Description: 既存のCognito User Pool ID（指定しない場合は新規作成）
+    Description: 'Existing Cognito User Pool ID (leave empty to create new one)'
 
   CognitoUserPoolClientId:
     Type: String
     Default: ""
-    Description: 既存のCognito User Pool Client ID（指定しない場合は新規作成）
+    Description: 'Existing Cognito User Pool Client ID (leave empty to create new one)'
 
   CognitoDomainPrefix:
     Type: String
     Default: ""
-    Description: Cognitoドメインのプレフィックス（指定しない場合は自動生成）
+    Description: 'Cognito domain prefix (leave empty for auto-generation)'
 
   McpAdmin:
     Type: String
     Default: "false"
-    Description: MCPランタイムLambda関数に管理者権限を付与するかどうか
-
-  BedrockRegion:
-    Type: String
-    Default: "us-west-2"
-    Description: Amazon Bedrockを利用するリージョン
-
-  DocumentProcessingModelId:
-    Type: String
-    Default: ""
-    Description: ドキュメント処理に使用するAIモデルID
-
-  ImageReviewModelId:
-    Type: String
-    Default: ""
-    Description: 画像レビューに使用するAIモデルID
+    AllowedValues: ["true", "false"]
+    Description: 'Whether to grant administrator privileges to MCP runtime Lambda function'
 
   RepoUrl:
     Type: String
     Default: "https://github.com/aws-samples/review-and-assessment-powered-by-intelligent-documentation.git"
-    Description: デプロイするリポジトリのURL
+    Description: 'Repository URL to deploy'
 
   Branch:
     Type: String
     Default: "main"
-    Description: デプロイするブランチ名
+    Description: 'Branch name to deploy'
 
   GitTag:
     Type: String
     Default: ""
-    Description: デプロイするGitタグ名（指定した場合はブランチよりも優先されます）
+    Description: 'Git tag name to deploy (takes priority over branch if specified)'
 
 Resources:
-  ProjectRole:
+
+  # SNS Topic for deployment notifications
+  DeploymentNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: RAPID Deployment Notifications
+      TopicName: !Sub 'Notification-for-${AWS::StackName}'
+      KmsMasterKeyId: 'alias/aws/sns'
+
+  # SNS Subscription for email notifications
+  DeploymentNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref DeploymentNotificationTopic
+      Endpoint: !Ref NotificationEmailAddress
+
+  # IAM Role for CodeBuild
+  CodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
+          - Effect: Allow
             Principal:
               Service: codebuild.amazonaws.com
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AdministratorAccess
+            Action: sts:AssumeRole
 
-  ProjectRoleDefaultPolicy:
+      # permission boundary
+
+      PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/VA-PB-Standard'
+ 
+      Policies:
+        - PolicyName: IDMP-CodeBuild-CustomPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:AttachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:PassRole
+                  - iam:GetRole
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - lambda:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - apigateway:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - states:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - rds:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - cognito-idp:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - cloudfront:*
+                  - wafv2:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
+                Resource: "*"
+                
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeRouteTables
+                  - ec2:DescribeAvailabilityZones
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeVpnGateways
+                Resource: "*"
+                
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: 
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:idmp/bitbucket/codebuild/ssh-key*'
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: 
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/cdk-*'
+              - Effect: Allow
+                Action:
+                  - ecr:DescribeRepositories
+                  - ecr:CreateRepository
+                  - ecr:GetRepositoryPolicy
+                  - ecr:SetRepositoryPolicy
+                  - ecr:DeleteRepository
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:PutImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:GetAuthorizationToken
+                  - ecr:PutLifecyclePolicy
+                Resource: "*"
+              
+
+
+  # IAM Policy for CodeBuild
+  CodeBuildServiceRolePolicy:
     Type: AWS::IAM::Policy
     Properties:
+      PolicyName: CodeBuildServiceRolePolicy
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
           - Action:
               - logs:CreateLogGroup
@@ -109,66 +261,33 @@ Resources:
               - logs:PutLogEvents
             Effect: Allow
             Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:"
-                    - Ref: AWS::Partition
-                    - ":logs:"
-                    - Ref: AWS::Region
-                    - ":"
-                    - Ref: AWS::AccountId
-                    - :log-group:/aws/codebuild/
-                    - Ref: Project
-                    - :*
-              - Fn::Join:
-                  - ""
-                  - - "arn:"
-                    - Ref: AWS::Partition
-                    - ":logs:"
-                    - Ref: AWS::Region
-                    - ":"
-                    - Ref: AWS::AccountId
-                    - :log-group:/aws/codebuild/
-                    - Ref: Project
+              - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RapidDeploymentProject}:*"
+              - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RapidDeploymentProject}"
           - Action:
-              - codebuild:BatchPutCodeCoverages
-              - codebuild:BatchPutTestCases
-              - codebuild:CreateReport
-              - codebuild:CreateReportGroup
-              - codebuild:UpdateReport
+              - sns:Publish
             Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - ":codebuild:"
-                  - Ref: AWS::Region
-                  - ":"
-                  - Ref: AWS::AccountId
-                  - :report-group/
-                  - Ref: Project
-                  - -*
-        Version: "2012-10-17"
-      PolicyName: ProjectRoleDefaultPolicy
+            Resource: !Ref DeploymentNotificationTopic
       Roles:
-        - Ref: ProjectRole
+        - !Ref CodeBuildServiceRole
 
-  Project:
+  # CodeBuild Project
+  RapidDeploymentProject:
     Type: AWS::CodeBuild::Project
     Properties:
+      Name: !Sub 'CodeBuild-for-${AWS::StackName}'
+      Description: 'Deploys Review & Assessment Powered by Intelligent Documentation (RAPID)'
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Artifacts:
         Type: NO_ARTIFACTS
-      Cache:
-        Type: NO_CACHE
-      EncryptionKey: alias/aws/s3
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
       Environment:
-        # Ref: https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html
+        Type: ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_MEDIUM
         Image: aws/codebuild/amazonlinux-aarch64-standard:3.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: true
-        Type: ARM_CONTAINER
         EnvironmentVariables:
           - Name: ALLOWED_IPV4_RANGES
             Value: !Ref AllowedIpV4AddressRanges
@@ -188,102 +307,394 @@ Resources:
             Value: !Ref CognitoDomainPrefix
           - Name: MCP_ADMIN
             Value: !Ref McpAdmin
-          - Name: BEDROCK_REGION
-            Value: !Ref BedrockRegion
-          - Name: DOCUMENT_PROCESSING_MODEL_ID
-            Value: !Ref DocumentProcessingModelId
-          - Name: IMAGE_REVIEW_MODEL_ID
-            Value: !Ref ImageReviewModelId
           - Name: REPO_URL
             Value: !Ref RepoUrl
           - Name: BRANCH
             Value: !Ref Branch
           - Name: GIT_TAG
             Value: !Ref GitTag
-      ServiceRole:
-        Fn::GetAtt:
-          - ProjectRole
-          - Arn
+          - Name: SNSTopicArn
+            Value: !Ref DeploymentNotificationTopic
+          - Name: AWS_DEFAULT_REGION
+            Value: us-east-1
       Source:
-        BuildSpec: |-
-          {
-            "version": 0.2,
-            "phases": {
-              "install": {
-                "runtime-versions": {
-                  "nodejs": "20"
-                },
-                "on-failure": "ABORT",
-                "commands": [
-                  "npm install -g npm@latest"
-                ]
-              },
-              "build": {
-                "commands": [
-                  "echo 'ビルドフェーズを開始します...'",
-                  "if [ ! -z \"$GIT_TAG\" ]; then\n  git clone $REPO_URL rapid\n  cd rapid\n  git checkout $GIT_TAG\n  cd ..\nelse\n  git clone --branch $BRANCH $REPO_URL rapid\nfi",
-                  "cd rapid",
-                  "echo 'パラメータを設定中...'",
-                  "echo '/**' > cdk/lib/parameter.ts",
-                  "echo ' * CDKデプロイのカスタムパラメータ設定ファイル' >> cdk/lib/parameter.ts",
-                  "echo ' *' >> cdk/lib/parameter.ts",
-                  "echo ' * このファイルは、CDKデプロイ時に使用するパラメータをカスタマイズするためのものです。' >> cdk/lib/parameter.ts",
-                  "echo ' * デプロイスクリプトによって自動生成されました。' >> cdk/lib/parameter.ts",
-                  "echo ' */' >> cdk/lib/parameter.ts",
-                  "echo '' >> cdk/lib/parameter.ts",
-                  "echo 'export const parameters = {' >> cdk/lib/parameter.ts",
-                  "echo '  // WAF IP制限の設定' >> cdk/lib/parameter.ts",
-                  "echo '  allowedIpV4AddressRanges: '$ALLOWED_IPV4_RANGES',' >> cdk/lib/parameter.ts",
-                  "echo '  allowedIpV6AddressRanges: '$ALLOWED_IPV6_RANGES',' >> cdk/lib/parameter.ts",
-                  "echo '' >> cdk/lib/parameter.ts",
-                  "echo '  // Prismaマイグレーション設定' >> cdk/lib/parameter.ts",
-                  "if [ \"$AUTO_MIGRATE\" = \"true\" ]; then echo '  autoMigrate: true,' >> cdk/lib/parameter.ts; else echo '  autoMigrate: false,' >> cdk/lib/parameter.ts; fi",
-                  "echo '' >> cdk/lib/parameter.ts",
-                  "echo '  // Cognito設定' >> cdk/lib/parameter.ts",
-                  "if [ \"$COGNITO_SELF_SIGNUP_ENABLED\" = \"true\" ]; then echo '  cognitoSelfSignUpEnabled: true,' >> cdk/lib/parameter.ts; else echo '  cognitoSelfSignUpEnabled: false,' >> cdk/lib/parameter.ts; fi",
-                  "if [ ! -z \"$COGNITO_USER_POOL_ID\" ]; then echo '  cognitoUserPoolId: \"'$COGNITO_USER_POOL_ID'\",' >> cdk/lib/parameter.ts; fi",
-                  "if [ ! -z \"$COGNITO_USER_POOL_CLIENT_ID\" ]; then echo '  cognitoUserPoolClientId: \"'$COGNITO_USER_POOL_CLIENT_ID'\",' >> cdk/lib/parameter.ts; fi",
-                  "if [ ! -z \"$COGNITO_DOMAIN_PREFIX\" ]; then echo '  cognitoDomainPrefix: \"'$COGNITO_DOMAIN_PREFIX'\",' >> cdk/lib/parameter.ts; fi",
-                  "echo '' >> cdk/lib/parameter.ts",
-                  "echo '  // Bedrock設定' >> cdk/lib/parameter.ts",
-                  "echo '  bedrockRegion: \"'$BEDROCK_REGION'\",' >> cdk/lib/parameter.ts",
-                  "if [ ! -z \"$DOCUMENT_PROCESSING_MODEL_ID\" ]; then echo '  documentProcessingModelId: \"'$DOCUMENT_PROCESSING_MODEL_ID'\",' >> cdk/lib/parameter.ts; fi",
-                  "if [ ! -z \"$IMAGE_REVIEW_MODEL_ID\" ]; then echo '  imageReviewModelId: \"'$IMAGE_REVIEW_MODEL_ID'\",' >> cdk/lib/parameter.ts; fi",
-                  "echo '' >> cdk/lib/parameter.ts",
-                  "echo '  // MCP設定' >> cdk/lib/parameter.ts",
-                  "if [ \"$MCP_ADMIN\" = \"true\" ]; then echo '  mcpAdmin: true,' >> cdk/lib/parameter.ts; else echo '  mcpAdmin: false,' >> cdk/lib/parameter.ts; fi",
-                  "echo '};' >> cdk/lib/parameter.ts",
-                  "echo 'パラメータファイルを作成しました:'",
-                  "cat cdk/lib/parameter.ts",
-                  "echo 'バックエンドの準備...'",
-                  "cd backend",
-                  "npm ci",
-                  "npm run prisma:generate",
-                  "npm run build",
-                  "cd ../cdk",
-                  "echo 'CDKデプロイの準備...'",
-                  "npm ci",
-                  "echo 'CDKデプロイを実行中...'",
-                  "npx cdk bootstrap",
-                  "npx cdk deploy --all --require-approval never"
-                ]
-              },
-              "post_build": {
-                "commands": [
-                  "echo 'デプロイ完了！'",
-                  "FRONTEND_URL=$(aws cloudformation describe-stacks --stack-name RapidStack --query \"Stacks[0].Outputs[?OutputKey=='FrontendURL'].OutputValue\" --output text)",
-                  "API_URL=$(aws cloudformation describe-stacks --stack-name RapidStack --query \"Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue\" --output text)",
-                  "echo \"フロントエンドURL: $FRONTEND_URL\"",
-                  "echo \"API URL: $API_URL\"",
-                  "echo \"FrontendURL = $FRONTEND_URL\""
-                ]
-              }
-            }
-          }
         Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+
+          phases:
+            install:
+              runtime-versions:
+                nodejs: 22
+              commands:
+                - echo "Starting RAPID deployment"
+                - aws sns publish --topic-arn ${SNSTopicArn} --subject "RAPID Deployment Started" --message "Deployment of Review & Assessment Powered by Intelligent Documentation (RAPID) has started. You will receive another notification when deployment is complete."
+                - npm install -g npm@latest
+
+            pre_build:
+              commands:
+                
+                - echo "Setting up SSH for self-hosted Bitbucket"
+            
+                # Create SSH directory
+                - mkdir -p ~/.ssh
+            
+                # Retrieve private key from Secrets Manager
+                - aws secretsmanager get-secret-value --secret-id idmp/bitbucket/codebuild/ssh-key --query SecretString --output text > ~/.ssh/id_rsa
+            
+                # Lock down permissions (required by SSH)
+                - chmod 600 ~/.ssh/id_rsa
+            
+                # Trust Bitbucket Cloud SSH host
+                - ssh-keyscan -p 7999 code.verisk.com >> ~/.ssh/known_hosts
+
+                - echo 'Cloning repository...'
+                # Optional connectivity check (safe in CI)
+                - ssh -p 7999 -T git@code.verisk.com || true
+                
+                - |
+                  if [ ! -z "$GIT_TAG" ]; then
+                    git clone $REPO_URL rapid
+                    cd rapid
+                    git checkout $GIT_TAG
+                    cd ..
+                  else
+                    git clone --branch $BRANCH $REPO_URL rapid
+                  fi
+                - cd rapid
+                - echo 'Setting up parameters...'
+                
+                # Create parameter generation script
+                - |
+                  cat > generate-parameters.js << 'EOF'
+                  const fs = require('fs');
+                  
+                  // Parse environment variables
+                  const ipv4Ranges = process.env.ALLOWED_IPV4_RANGES ? 
+                    JSON.parse(process.env.ALLOWED_IPV4_RANGES) : [];
+                  const ipv6Ranges = process.env.ALLOWED_IPV6_RANGES ? 
+                    JSON.parse(process.env.ALLOWED_IPV6_RANGES) : [];
+                  
+                  // Build parameters object
+                  const params = {
+                    // WAF IP restriction settings
+                    allowedIpV4AddressRanges: ipv4Ranges,
+                    allowedIpV6AddressRanges: ipv6Ranges,
+                    
+                    // Prisma migration settings
+                    autoMigrate: process.env.AUTO_MIGRATE === 'true',
+                    
+                    // Cognito settings
+                    cognitoSelfSignUpEnabled: process.env.COGNITO_SELF_SIGNUP_ENABLED === 'true',
+                  };
+                  
+                  // Add optional Cognito parameters if provided
+                  if (process.env.COGNITO_USER_POOL_ID) {
+                    params.cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID;
+                  }
+                  if (process.env.COGNITO_USER_POOL_CLIENT_ID) {
+                    params.cognitoUserPoolClientId = process.env.COGNITO_USER_POOL_CLIENT_ID;
+                  }
+                  if (process.env.COGNITO_DOMAIN_PREFIX) {
+                    params.cognitoDomainPrefix = process.env.COGNITO_DOMAIN_PREFIX;
+                  }
+                  
+                  // MCP settings
+                  params.mcpAdmin = process.env.MCP_ADMIN === 'true';
+                  
+                  // Generate TypeScript file content
+                  const tsContent = `/**
+                   * CDK deployment custom parameter configuration file
+                   *
+                   * This file is used to customize parameters for CDK deployment.
+                   * Auto-generated by deployment script.
+                   */
+                  
+                  export const parameters = ${JSON.stringify(params, null, 2)};
+                  `;
+                  
+                  // Write to file
+                  fs.writeFileSync('cdk/lib/parameter.ts', tsContent);
+                  console.log('Parameter file created successfully');
+                  console.log(tsContent);
+                  EOF
+                
+                # Run the parameter generation script
+                - node generate-parameters.js
+
+            build:
+              commands:
+                - cd $CODEBUILD_SRC_DIR/rapid
+                - echo 'Preparing backend...'
+                - cd backend
+                - npm ci
+                - npm run prisma:generate
+                - npm run build
+                - cd ../cdk
+                - echo 'Preparing CDK deployment...'
+                - npm ci
+                - echo 'Running CDK deployment...'
+                
+                # Set environment explicitly
+                - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                - export AWS_DEFAULT_REGION=us-east-1
+                - export CDK_DEFAULT_ACCOUNT=$AWS_ACCOUNT_ID
+                - export CDK_DEFAULT_REGION=us-east-1
+                
+                # Bootstrap CDK 
+                #- npx cdk bootstrap
+                #- npx cdk bootstrap --cloudformation-execution-policies arn:aws:iam::${AWS_ACCOUNT_ID}:policy/IDMP-CDK-Bootstrap-ExecutionPolicy --permission-boundary arn:aws:iam::${AWS_ACCOUNT_ID}:policy/VA-PB-Standard 
+                
+                - echo 'Deploying The Stack...'
+
+                # Deploy backend infrastructure
+                - npx cdk deploy --all --require-approval never --region us-east-1
+            
+                - echo "Fetching stack outputs..."
+
+                - export STACK_NAME=RapidStack
+
+                - export BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" --output text)
+
+                - export DIST_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" --output text)
+
+                - export API_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+                
+                - export USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text)
+
+                - export USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" --output text)
+
+                - 'echo "Bucket Name: $BUCKET_NAME"'
+                - 'echo "Distribution ID: $DIST_ID"'
+                - 'echo "API URL: $API_URL"'
+
+                - 'if [ -z "$BUCKET_NAME" ]; then echo "Frontend bucket output missing"; exit 1; fi'
+
+                - 'echo "Building frontend..."'
+
+                - cd $CODEBUILD_SRC_DIR/rapid/frontend
+
+                - npm ci
+
+                - export VITE_API_URL=$API_URL
+
+                - export VITE_USER_POOL_ID=$USER_POOL_ID
+                
+                - export VITE_USER_POOL_CLIENT_ID=$USER_POOL_CLIENT_ID
+                
+                - export VITE_AWS_REGION=us-east-1
+                
+                - export VITE_VERSION=$(git describe --tags --abbrev=0 || echo "dev")
+                
+                
+                - echo "Creating .env.production for Vite..."
+                
+                - rm -f .env.production
+                
+                - echo "VITE_API_URL=$VITE_API_URL" >> .env.production
+                - echo "VITE_USER_POOL_ID=$VITE_USER_POOL_ID" >> .env.production
+                - echo "VITE_USER_POOL_CLIENT_ID=$VITE_USER_POOL_CLIENT_ID" >> .env.production
+                - echo "VITE_AWS_REGION=$VITE_AWS_REGION" >> .env.production
+                
+                # OPTIONAL but recommended (for Hosted UI / future use)
+                - echo "VITE_USER_POOL_DOMAIN=$COGNITO_DOMAIN_PREFIX.auth.$AWS_DEFAULT_REGION.amazonaws.com" >> .env.production
+                
+                - cat .env.production  # ? debug visibility
+
+                - npm run build
+
+                - 'echo "Frontend build completed"'
+
+                - ls -la dist/
+
+                - 'echo "Uploading frontend to S3..."'
+
+                - aws s3 sync dist/ s3://$BUCKET_NAME --delete
+
+                - 'echo "Creating CloudFront invalidation..."'
+
+                - aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
+
+                - cd $CODEBUILD_SRC_DIR
+                
+                - echo 'Getting Deployment Details...'
+                # Get deployment information
+                - cd $CODEBUILD_SRC_DIR/
+                - |
+                  # Find the deployed stack
+                  STACK_NAME='RapidStack'
+
+                  # Get outputs from the stack
+                  if [ ! -z "$STACK_NAME" ]; then
+                    FRONTEND_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='FrontendURL'].OutputValue" --output text)
+                    API_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+                    USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text)
+                  fi
+                  
+                  # Get AWS account info
+                  AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                  
+                  # Build Cognito console URL if we have a User Pool ID
+                  if [ ! -z "$USER_POOL_ID" ] && [ "$USER_POOL_ID" != "None" ]; then
+                    USER_CREATION_URL="https://${AWS_ACCOUNT_ID}.${AWS_DEFAULT_REGION}.console.aws.amazon.com/cognito/v2/idp/user-pools/${USER_POOL_ID}/user-management/users?region=${AWS_DEFAULT_REGION}"
+                  else
+                    USER_CREATION_URL="Check Cognito console for user pool management"
+                  fi
+
+                  cat > deployment-info.txt << EOF
+                  RAPID Deployment Completed Successfully!
+                  Deployment Time: $(date '+%Y-%m-%d %H:%M:%S')
+
+                  Application URL: ${FRONTEND_URL}
+                  API URL: ${API_URL}
+
+                  Important Next Steps:
+                  1. Please enable model access on Amazon Bedrock at us-west-2 region:
+                     - Anthropic Claude 3.7 Sonnet
+                     - Amazon Nova Premier
+                     https://${AWS_ACCOUNT_ID}.us-west-2.console.aws.amazon.com/bedrock/home?region=us-west-2#/modelaccess
+                  
+                  2. Create a user in the Cognito User Pool to access the application (if self-signup disabled):
+                     ${USER_CREATION_URL}
+
+                  Configuration:
+                  Auto Migration: ${AUTO_MIGRATE}
+                  Self-Signup Enabled: ${COGNITO_SELF_SIGNUP_ENABLED}
+                  MCP Admin: ${MCP_ADMIN}
+                  IPv6 Disabled: ${DISABLE_IPV6}
+                  Allowed IPv4 Ranges: ${ALLOWED_IPV4_RANGES}
+                  Allowed IPv6 Ranges: ${ALLOWED_IPV6_RANGES}
+
+                  Stack Details:
+                  Stack Name: ${STACK_NAME}
+                  Region: ${AWS_DEFAULT_REGION}
+
+                  For more information, visit: https://github.com/aws-samples/review-and-assessment-powered-by-intelligent-documentation
+                  EOF
+
+            post_build:
+              commands:
+                - cd $CODEBUILD_SRC_DIR/
+                - |
+                    if [ -f deployment-info.txt ]; then
+                      echo 'Deployment completed!'
+                      echo "Frontend URL: $FRONTEND_URL"
+                      echo "API URL: $API_URL"
+                      aws sns publish --topic-arn "${SNSTopicArn}" \
+                        --subject "RAPID Deployment Complete" \
+                        --message file://deployment-info.txt
+                    else
+                      aws sns publish --topic-arn "${SNSTopicArn}" \
+                        --subject "RAPID Deployment Failed" \
+                        --message "Deployment of RAPID has Failed."
+                    fi
+                - rm -rf rapid
+          artifacts:
+            files:
+              - deployment-info.txt
+      TimeoutInMinutes: 120
+
+  # Custom Resource to trigger CodeBuild
+  DeploymentTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt TriggerFunction.Arn
+      ProjectName: !Ref RapidDeploymentProject
+      ServiceTimeout: 600
+
+  # Lambda function for the Custom Resource
+  TriggerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt TriggerFunctionRole.Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Code:
+        ZipFile: |
+          const { CodeBuildClient, StartBuildCommand } = require('@aws-sdk/client-codebuild');
+          const response = require('cfn-response');
+
+          exports.handler = async (event, context) => {
+            console.log('Event:', JSON.stringify(event, null, 2));
+            
+            const physicalResourceId = `CodeBuildTrigger-${event.ResourceProperties.ProjectName}`;
+            const responseData = {};
+            
+            try {
+              const codebuild = new CodeBuildClient({ 
+                region: process.env.AWS_REGION,
+                maxAttempts: 3
+              });
+
+              if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+                const command = new StartBuildCommand({ 
+                  projectName: event.ResourceProperties.ProjectName 
+                });
+                const result = await codebuild.send(command);
+                responseData.BuildId = result.build.id;
+              }
+              
+              await response.send(event, context, response.SUCCESS, responseData, physicalResourceId);
+            } catch (error) {
+              console.error('Error:', error);
+              await response.send(event, context, response.FAILED, { Error: error.message }, physicalResourceId);
+            }
+          };
+
+  # IAM Role for Lambda Trigger Function
+  TriggerFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        
+      PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/VA-PB-Standard'
+      
+      Policies:
+        - PolicyName: CodeBuildStartPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: codebuild:StartBuild
+                Resource: !GetAtt RapidDeploymentProject.Arn
 
 Outputs:
-  ProjectName:
-    Value:
-      Ref: Project
-    Description: CodeBuildプロジェクト名
+  NotificationTopicArn:
+    Description: ARN of the SNS topic for deployment notifications
+    Value: !Ref DeploymentNotificationTopic
+  
+  CodeBuildProjectName:
+    Description: Name of the CodeBuild project
+    Value: !Ref RapidDeploymentProject
+  
+  CodeBuildLogGroup:
+    Description: CloudWatch Logs group for CodeBuild logs
+    Value: !Sub '/aws/codebuild/${RapidDeploymentProject}'
+  
+  DeploymentStatus:
+    Description: Deployment status information
+    Value: !Sub "Deployment has been initiated. You will receive an email notification at ${NotificationEmailAddress} when the deployment is complete."
+
+  RepositoryUrl:
+    Description: Repository URL being deployed
+    Value: !Ref RepoUrl
+
+  DeploymentBranch:
+    Description: Branch or tag being deployed
+    Value: !If 
+      - HasGitTag
+      - !Sub "Tag: ${GitTag}"
+      - !Sub "Branch: ${Branch}"
+
+Conditions:
+  HasGitTag: !Not [!Equals [!Ref GitTag, ""]]
+
